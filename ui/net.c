@@ -237,30 +237,27 @@ static void net_process_ping(
 
 
 
-    if (addrcmp(&nh->addr, &ctl->unspec_addr, ctl->af) == 0) {
-        /* should be out of if as addr can change */
-        memcpy(&nh->addr, addrcopy, sockaddr_addr_size(sourcesockaddr));
-        nh->mpls = *mpls;
-        display_rawhost(ctl, index, (void *)&(nh->addr), (void *)&(nh->mpls));
-
-        /* multi paths */
-        memcpy(&nh->addrs[0], addrcopy, sockaddr_addr_size(sourcesockaddr));
-        nh->mplss[0] = *mpls;
-    } else {
+    if (addrcmp(&nh->addr, &addrcopy, ctl->af) != 0) {
         for (i = 0; i < MAXPATH;) {
-            if (addrcmp(&nh->addrs[i], &addrcopy, ctl->af) == 0 ||
-                addrcmp(&nh->addrs[i], &ctl->unspec_addr, ctl->af) == 0) {
-                break;
+            if (addrcmp(&nh->addrs[i], &ctl->unspec_addr, ctl->af) == 0) {
+                break; /* Found first vacant position */
             }
             i++;
         }
 
-        if (addrcmp(&nh->addrs[i], &addrcopy, ctl->af) != 0 && i < MAXPATH) {
-            memcpy(&nh->addrs[i], addrcopy, sockaddr_addr_size(sourcesockaddr));
+        if (i < MAXPATH) {
+            memcpy(&nh->addrs[i], &nh->addr, sockaddr_addr_size(sourcesockaddr));
 
-            nh->mplss[i] = *mpls;
+            nh->mplss[i] = nh->mpls;
             display_rawhost(ctl, index, (void *)&(nh->addrs[i]), (void *)&(nh->addrs[i]));
         }
+
+        /* Always write the latest host to nh->addr. This allows 
+         * maTTL to slide whenever path changes.
+         */
+        memcpy(&nh->addr, addrcopy, sockaddr_addr_size(sourcesockaddr));
+        nh->mpls = *mpls;
+        display_rawhost(ctl, index, (void *)&(nh->addr), (void *)&(nh->mpls));
     }
 
     nh->jitter = totusec - nh->last;
@@ -575,7 +572,7 @@ int net_send_batch(
            when host[i].addr == 0 */
         if (host_addr_cmp(i, remoteaddress, ctl->af) == 0) {
             restart = 1;
-            numhosts = index + 1;
+            numhosts = index + 1; /* Saves batch_at - index number of probes in the next round!*/
             break;
         }
     }
