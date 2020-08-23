@@ -535,6 +535,7 @@ int net_send_batch(
     struct mtr_ctl *ctl)
 {
     int n_unknown = 0, i;
+    int restart = 0;
 
     /* randomized packet size and/or bit pattern if packetsize<0 and/or 
        bitpattern<0.  abs(packetsize) and/or abs(bitpattern) will be used 
@@ -572,8 +573,11 @@ int net_send_batch(
            hosts. Removed in 0.65. 
            If the line proves necessary, it should at least NOT trigger that line
            when host[i].addr == 0 */
-        if (host_addr_cmp(i, remoteaddress, ctl->af) == 0)
-            n_unknown = MaxHost;        /* Make sure we drop into "we should restart" */
+        if (host_addr_cmp(i, remoteaddress, ctl->af) == 0) {
+            restart = 1;
+            numhosts = index + 1;
+            break;
+        }
     }
 
     if (                        /* success in reaching target */
@@ -582,7 +586,11 @@ int net_send_batch(
            (n_unknown > ctl->maxUnknown) ||
            /* or reach limit  */
            (batch_at >= ctl->maxTTL - 1)) {
+        restart = 1;
         numhosts = batch_at + 1;
+    }
+
+    if(restart) {
         batch_at = ctl->fstTTL - 1;
         return 1;
     }
