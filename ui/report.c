@@ -184,8 +184,8 @@ void report_close(
 
         /* This feature shows 'loadbalances' on routes */
 
-        /* z is starting at 1 because addrs[0] is the same that addr */
-        for (z = 1; z < MAXPATH; z++) {
+        /* NO LONGER !z is starting at 1 because addrs[0] is the same that addr */
+        for (z = 0; z < MAXPATH; z++) {
             int found = 0;
             addr2 = net_addrs(at, z);
             mplss = net_mplss(at, z);

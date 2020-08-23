@@ -219,6 +219,7 @@ static void net_process_ping(
     int oldavg;                 /* usedByMin */
     int oldjavg;                /* usedByMin */
     int i;                      /* usedByMin */
+    int found = 0;
 #ifdef ENABLE_IPV6
     char addrcopy[sizeof(struct in6_addr)];
 #else
@@ -239,13 +240,17 @@ static void net_process_ping(
 
     if (addrcmp(&nh->addr, &addrcopy, ctl->af) != 0) {
         for (i = 0; i < MAXPATH;) {
+            if (addrcmp(&nh->addrs[i], &nh->addr, ctl->af) == 0) {
+                found = 1; /* Found first vacant position */
+                break;
+            }
             if (addrcmp(&nh->addrs[i], &ctl->unspec_addr, ctl->af) == 0) {
                 break; /* Found first vacant position */
             }
             i++;
         }
 
-        if (i < MAXPATH) {
+        if (found == 0 && i < MAXPATH) {
             memcpy(&nh->addrs[i], &nh->addr, sockaddr_addr_size(sourcesockaddr));
 
             nh->mplss[i] = nh->mpls;
@@ -572,7 +577,7 @@ int net_send_batch(
            when host[i].addr == 0 */
         if (host_addr_cmp(i, remoteaddress, ctl->af) == 0) {
             restart = 1;
-            numhosts = index + 1; /* Saves batch_at - index number of probes in the next round!*/
+            numhosts = i + 1; /* Saves batch_at - index number of probes in the next round!*/
             break;
         }
     }
